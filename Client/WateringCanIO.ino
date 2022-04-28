@@ -55,6 +55,20 @@ void loop() {
       printWEB();
     }
     
+    //override buttons
+    carrier.Buttons.update();
+    while(carrier.Buttons.getTouch(TOUCH1)){
+      carrier.Relay1.open();
+      carrier.Buttons.update();
+    }
+    carrier.Relay1.close();
+    
+    carrier.Buttons.update();
+    while(carrier.Buttons.getTouch(TOUCH2)){
+      carrier.Relay2.open();
+      carrier.Buttons.update();
+    }
+    carrier.Relay2.close();
 }
 
 void printWifiStatus(){
