@@ -1,4 +1,10 @@
-#include "arduino_secrets.h"
+// ArduinoJson - Version: Latest 
+#include <ArduinoJson.h>
+#include <ArduinoJson.hpp>
+
+// ArduinoHttpClient - Version: Latest 
+#include <ArduinoHttpClient.h>
+
 #include <WiFiNINA.h>
 #include <Arduino_MKRIoTCarrier.h>
 #include <ctype.h>
@@ -7,20 +13,31 @@ MKRIoTCarrier carrier;
 char ssid[] = SECRET_SSID;
 char pass[] = SECRET_PASS;
 
+const char serverName[] = "http://192.168.0.11";
+unsigned long lastTime = 0;
+const unsigned long timerDelay = 15120;
+
+
 int keyIndex = 0;                  // your network key Index number (needed only for WEP)
 int status = WL_IDLE_STATUS;      // connection status
 WiFiServer server(80);           // server socket
 
 WiFiClient client = server.available();
+byte mac[6];
+String MAC = "";
 
-//int moistPin = A5;  //Set the analog pin
- 
+int moistPin = A5;  //Set the analog pin
+
+int moistValue;
+float temperature;
+float humidity;
+int light;
 
 //PROTOTYPES
 void printWifiStatus();
 void enable_WiFi();
 void connect_WiFi();
-//void readSensors();
+void readSensors();
 void printWEB();
 
 
@@ -35,7 +52,6 @@ void setup() {
   carrier.display.setCursor(20, 50); 
 
   delay(2000);
-  Serial.println(FAHRENHEIT);
   
   Serial.println("Enableing Wifi...");
   enable_WiFi();
@@ -45,6 +61,15 @@ void setup() {
   server.begin();
   printWifiStatus();
   
+  WiFi.macAddress(mac);
+  for(int i = 5; i >= 0; i--){
+    MAC += mac[i];
+    if(i != 0){
+      MAC += ':';
+    }
+  }
+  Serial.print("MAC: ");
+  Serial.println(MAC);
   
 }
 
@@ -69,7 +94,46 @@ void loop() {
       carrier.Buttons.update();
     }
     carrier.Relay2.close();
+    
+   //Send an HTTP POST request every 10 minutes
+  if ((millis() - lastTime) > timerDelay) {
+    Serial.println("Sending sensor data via POST");
+    IPAddress server(192,168,0,11);
+    WiFiClient postclient;
+    
+    //update sensor vars
+    readSensors();
+    //generate json object to send via POST
+    DynamicJsonDocument doc(1024);
+    doc["light"] = light;
+    doc["temperature"] = temperature;
+    doc["humidity"] = humidity;
+    doc["moisture"] = moistValue;
+    doc["mac"] = MAC;
+    doc["ip"] = WiFi.localIP();
+    
+    
+    String output;
+    
+    size_t sizeofT = serializeJson(doc, output);
+    
+    Serial.println(output);
+    
+    if (postclient.connect(server, 80)) {
+      postclient.println("POST / HTTP/1.1");
+      postclient.println("Host: 192.168.0.11");
+      postclient.println("User-Agent: Arduino/1.0");
+      postclient.println("Connection: close");
+      postclient.print("Content-Length: ");
+      postclient.println(sizeofT);
+      postclient.println();
+      postclient.println(output);
+    }
+    lastTime = millis();
+    postclient.stop();
+  }
 }
+
 
 void printWifiStatus(){
   // print the SSID of the network you're attached to:
@@ -121,7 +185,9 @@ void connect_WiFi(){
     carrier.display.println("Waiting for Connection ...");
     // wait 10 seconds for connection:
     delay(10000);
+    
   }
+  
 }
 
 void printWEB(){
@@ -175,6 +241,7 @@ void printWEB(){
         }
         //Serial.println(currentLine);
         if(currentLine.endsWith("HTTP")){
+          Serial.println(currentLine);
           String holder = currentLine;
           holder.replace(" HTTP", "");
           holder.replace("GET /", "");
@@ -192,6 +259,21 @@ void printWEB(){
     // close the connection:
     client.stop();
     Serial.println("client disconnected");
+  }
+}
+
+void readSensors(){
+  int rawMoistValue = analogRead(moistPin);
+  moistValue = map(rawMoistValue, 0, 1023, 100, 0);
+  
+  temperature = carrier.Env.readTemperature();
+  humidity = carrier.Env.readHumidity();
+  
+  if(carrier.Light.colorAvailable()){
+    // read the color
+    int none;
+    carrier.Light.readColor(none, none, none, light);
+    
   }
 }
 
