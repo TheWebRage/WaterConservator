@@ -6,6 +6,8 @@
 #include <SPI.h>
 #include <SD.h>
 
+#include "Node.h"
+
 // Access to board
 MKRIoTCarrier carrier;
  
@@ -24,7 +26,7 @@ char serverAddress[] = "api.openweathermap.org";
 String apiKey = "b21d29b1d9adc4401e8889e7805701ee";
 String location = "Salt Lake City, US";
 String cityName;
-String weatherDescription[] = {"Loading", "Loading", "Loading"};
+String weatherDescription[] = {"Loading", "Loading", "Loading", "Loading", "Loading"};
 WiFiClient weatherClient;
  
 // Analog pin set
@@ -32,6 +34,8 @@ const int moistPin = A5;  //Set the analog pin
  
 // State of the relay pin
 String relayState = "A5";
+
+Node* nodes = new Node[1];
 
 // Sensor readings
 int moistValue;
@@ -46,5 +50,8 @@ char* databaseFileName = "nodes.db";
 // Information about the connected nodes
 // - Updates everytime there is a call to the readNodesFromFile() method
 int numNodes = 0;
+
+// Keeps track of the watering timer information
+unsigned long wateringTimer = 0;
 
 #endif

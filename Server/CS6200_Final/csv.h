@@ -36,17 +36,18 @@ bool writeToFile(char*fileName, String strToWrite) {
 
 // Delete all connected nodes
 bool deleteNodes() {
+  return true;
   // Remove file then init again with new header
-  Serial.println("Reseting database");
   SD.remove(databaseFileName);
-  writeToFile(databaseFileName, "macAddress,moistureLevel1,moistureLevel2,lightLevel,humidity,temperature,relay1Status,relay2Status");
+  // writeToFile(databaseFileName, "macAddress,moistureLevel1,moistureLevel2,lightLevel,humidity,temperature,relay1Status,relay2Status");
   numNodes = 0;
   return true;
 }
 
 // Use this to parse the lines for each Node (https://github.com/michalmonday/CSV-Parser-for-Arduino)
 Node* readNodesFromFile() {
-  Serial.println("Reading file for nodes");
+  return nodes;
+  
   dataFile = SD.open(databaseFileName, FILE_READ);
   delay(100);
   char* file;
@@ -57,16 +58,13 @@ Node* readNodesFromFile() {
   // CSV_Parser cp(file, "sLLLLLLL");
   
   
-  Serial.println("Going to parse file contents");
   // Initialize the parser with the fileString and format
-  CSV_Parser cp("sLLLLLLL", true, ',');
+  CSV_Parser cp("sLLLLLLL", false, ',');
   if (!cp.readSDfile(databaseFileName)) {
     Serial.print("\nCouldn't read ");
     Serial.println(databaseFileName);
   }
   
-  
-  Serial.println("Creating arrays of values");
   // Take values from parser object and load into variables
   char** macAddresses =   (char**)cp["macAddress"];
   int32_t* moistureLevel1s = (int32_t*)cp["moistureLevel1"];
@@ -77,12 +75,12 @@ Node* readNodesFromFile() {
   int32_t* relay1Statuses =  (int32_t*)cp["relay1Status"];
   int32_t* relay2Statuses =  (int32_t*)cp["relay2Status"];
   
-  
-  Serial.println("Creating node array and node objects");
   // Take loaded variables and load into Node objects
   numNodes = cp.getRowsCount();
-  Serial.println(numNodes);
   Node* nodes = new Node[numNodes];
+  if (numNodes < 1) {
+    return nodes;
+  }
   
   for (int i = 0; i < numNodes; i++) {
     nodes[i].macAddress = macAddresses[i];
@@ -121,6 +119,7 @@ bool writeNodesToFile(Node* nodes) {
 
 // Adds a single node to the existing database
 bool addNewNode(Node node) {
+  return true;
   // Format string into csv format
   Serial.print("Adding Node");
   String macAddress = node.macAddress;

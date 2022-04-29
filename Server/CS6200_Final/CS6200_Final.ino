@@ -7,6 +7,16 @@
 #include "printHTML.h"
 #include "weather.h"
  
+  // TODO:
+  // - Recieve POST requests with information
+  // - Each Node (Save?)
+  //   - Method to send signal to water
+  //   - Algorithm with recieved data
+  //     - Update watering time when new data is received (No global timer, just default next watering time that is updated)
+  //     - Weather forcast API
+  //     - Sensor readings (From POST request)
+  //     - Keep track of all nodes connected and display them in the 
+  
 void setup() {
   Serial.begin(9600);
   delay(1500);
@@ -22,42 +32,68 @@ void setup() {
   server.begin();
   printWifiStatus();
   
+  updateWeather();
   
-  writeToFile(databaseFileName, "macAddress,moistureLevel1,moistureLevel2,lightLevel,humidity,temperature,relay1Status,relay2Status");
+  //writeToFile(databaseFileName, "macAddress,moistureLevel1,moistureLevel2,lightLevel,humidity,temperature,relay1Status,relay2Status");
 }
  
 void loop() {
-  updateWeather();
-  
-  client = server.available();
- 
-  if (client) {
-    readSensors();
-    printWEB();
-  
-    deleteNodes();
+  // Override button for watering
+  carrier.Buttons.update();
+  // Serial.println("1");
+  if (carrier.Buttons.onTouchDown(TOUCH2)) {
+    WiFiClient waterClient;
+    // String nodeAddress = "http://192.168.0.37/";
+    // nodeAddress.concat(nodes[0].wateringTime);
+    // char temp[] = "";
+    // nodeAddress.toCharArray(temp, nodeAddress.length() + 1);
+    IPAddress temp (192, 168, 0, 37);
     
-    Node* node = new Node();
-    node->macAddress = "testMacAddress";
-    node->moistureLevel1 = moistValue;
-    node->moistureLevel2 = 0;
-    node->lightLevel = light;
-    node->humidity = humidity;
-    node->temperature = temperature;
-    node->relay1Status = 0;
-    node->relay2Status = 0;
+    if (waterClient.connect(temp,80)) {
+      waterClient.stop();
+    }
     
-    Serial.println(node->macAddress);
-
-    addNewNode(*node);
-    Serial.println("finished");
-
+    Serial.println("\nWatering Client\n");
+    Serial.println(temp);
+    Serial.println(nodes[0].wateringTime);
+    
+    // Reset the timer
+    nodes[0].countdownTimer = millis();
   }
   
-  // Additional work needed:
-  //  - if new mac address, add new node into database
-  //  - create both server and node code
-  //  - 
+  client = server.available();
+  if (client) {
+    printWEB();
+  }
+  
+  
+  if((millis()-nodes[0].countdownTimer) > nodes[0].timeToWater) {
+    // Send a signal to water
+    WiFiClient waterClient;
+    // String nodeAddress = "http://192.168.0.37/";
+    // nodeAddress.concat(nodes[0].wateringTime);
+    char temp[] = "http://192.168.0.37";
+    // nodeAddress.toCharArray(temp, nodeAddress.length() + 1);
+    // IPAddress temp (192, 168, 0, 37);
+    
+    if (waterClient.connect(temp,80)) {
+      waterClient.println("");
+      waterClient.println("GET /900 HTTP");
+      waterClient.println("Host: 192.168.0.37");
+      waterClient.println("Connection: close");
+      waterClient.stop();
+      Serial.println("\nSending\n");
+    }
+    
+    Serial.println("\nWatering Client\n");
+    Serial.println(temp);
+    Serial.println(nodes[0].wateringTime);
+    
+    // Reset the timer
+    nodes[0].countdownTimer = millis();
+  }
+  
+  
 }
  
 void printWifiStatus() {
